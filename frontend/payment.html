@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment | Ankit Kumar</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0f172a, #111827);
+      color: #f8fafc;
+    }
+    .payment-container {
+      max-width: 700px;
+      margin: 60px auto;
+      padding: 30px;
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid #334155;
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    .payment-card {
+      padding: 18px;
+      border-radius: 14px;
+      background: #1e293b;
+      margin-bottom: 16px;
+      border: 1px solid #475569;
+    }
+    .payment-card h3 {
+      margin-top: 0;
+      color: #38bdf8;
+    }
+    .upi-btn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 16px;
+      background: #38bdf8;
+      color: #0f172a;
+      text-decoration: none;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .upi-btn:hover {
+      background: #0ea5e9;
+    }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 20px;
+      color: #38bdf8;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="payment-container">
+    <a href="index.html" class="back-link">← Back to Portfolio</a>
+    <h1>Make a Payment</h1>
+    <p>Choose any UPI app below to complete your payment securely.</p>
+
+    <div class="payment-card">
+      <h3>Google Pay</h3>
+      <p>Scan or tap to pay using Google Pay.</p>
+      <a class="upi-btn" href="upi://pay?pa=ankitkumar.data39@oksbi&pn=Ankit%20Kumar&am=100&cu=INR" target="_blank" rel="noopener noreferrer">Pay with Google Pay</a>
+    </div>
+
+    <div class="payment-card">
+      <h3>PhonePe</h3>
+      <p>Open PhonePe and pay to the linked UPI ID.</p>
+      <a class="upi-btn" href="upi://pay?pa=ankitkumar.data39@oksbi&pn=Ankit%20Kumar&am=100&cu=INR" target="_blank" rel="noopener noreferrer">Pay with PhonePe</a>
+    </div>
+
+    <div class="payment-card">
+      <h3>Any UPI App</h3>
+      <p>Use any UPI-enabled app such as Paytm, BHIM, Amazon Pay, or SBI Pay.</p>
+      <a class="upi-btn" href="upi://pay?pa=ankitkumar.data39@oksbi&pn=Ankit%20Kumar&am=100&cu=INR" target="_blank" rel="noopener noreferrer">Pay with UPI</a>
+    </div>
+  </div>
+</body>
+</html>
