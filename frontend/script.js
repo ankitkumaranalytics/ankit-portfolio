@@ -5,6 +5,7 @@
 document.addEventListener("DOMContentLoaded", () => {
 
     const apiBase = window.__API_BASE__ || (window.location.hostname === "localhost" ? "http://localhost:3000" : window.location.origin);
+    const formEndpoint = window.__CONTACT_FORM_ENDPOINT__ || "";
 
     console.log("Portfolio Loaded Successfully");
 
@@ -325,11 +326,17 @@ document.addEventListener("DOMContentLoaded", () => {
             formStatus.textContent = "Saving your message...";
 
             try {
-                const response = await fetch(`${apiBase}/api/messages`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
+                const response = formEndpoint
+                    ? await fetch(formEndpoint, {
+                        method: "POST",
+                        headers: { Accept: "application/json" },
+                        body: new FormData(form)
+                    })
+                    : await fetch(`${apiBase}/api/messages`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
 
                 let data = {};
                 try {
@@ -339,10 +346,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 if (!response.ok) {
-                    throw new Error(data.error || "Unable to save message");
+                    throw new Error(data.error || data.message || "Unable to save message");
                 }
 
-                formStatus.textContent = "Message saved successfully!";
+                formStatus.textContent = formEndpoint ? "Message sent successfully!" : "Message saved successfully!";
                 form.reset();
                 inputs.forEach(input => input.style.border = "none");
 
