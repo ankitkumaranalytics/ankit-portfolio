@@ -4,6 +4,8 @@
 
 document.addEventListener("DOMContentLoaded", () => {
 
+    const apiBase = window.__API_BASE__ || (window.location.hostname === "localhost" ? "http://localhost:3000" : window.location.origin);
+
     console.log("Portfolio Loaded Successfully");
 
     /* ===============================
@@ -323,7 +325,7 @@ document.addEventListener("DOMContentLoaded", () => {
             formStatus.textContent = "Saving your message...";
 
             try {
-                const response = await fetch("/api/messages", {
+                const response = await fetch(`${apiBase}/api/messages`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)

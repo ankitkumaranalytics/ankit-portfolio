@@ -83,6 +83,7 @@
   <div id="messages"></div>
 
   <script>
+    const apiBase = window.__API_BASE__ || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin);
     let authHeader = '';
 
     function login() {
@@ -102,7 +103,7 @@
           return;
         }
 
-        const res = await fetch('/api/messages', {
+        const res = await fetch(`${apiBase}/api/messages`, {
           headers: { Authorization: authHeader }
         });
 
@@ -152,7 +153,7 @@
       }
 
       status.textContent = 'Sending reply...';
-      const res = await fetch(`/api/messages/${id}/reply`, {
+      const res = await fetch(`${apiBase}/api/messages/${id}/reply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -172,7 +173,7 @@
     }
 
     async function deleteMessage(id) {
-      const res = await fetch(`/api/messages/${id}`, {
+      const res = await fetch(`${apiBase}/api/messages/${id}`, {
         method: 'DELETE',
         headers: { Authorization: authHeader }
       });
