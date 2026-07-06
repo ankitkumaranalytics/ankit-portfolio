@@ -23,6 +23,15 @@ if (!fs.existsSync(dbPath) && fs.existsSync(rootDbPath)) {
 
 app.use(cors());
 app.use(express.json());
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'admin.html'));
+});
+
 app.use(express.static(frontendPath));
 
 const db = new sqlite3.Database(dbPath, (err) => {
