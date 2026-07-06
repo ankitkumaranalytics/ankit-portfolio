@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin - Messages</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #fff;
+      margin: 0;
+      padding: 30px;
+    }
+    h1 {
+      color: #38bdf8;
+      margin-bottom: 20px;
+    }
+    .login-box, .card {
+      background: #111827;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .meta {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    .empty {
+      color: #cbd5e1;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      margin-top: 8px;
+      margin-bottom: 10px;
+      background: #1e293b;
+      color: white;
+    }
+    button {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #38bdf8;
+      color: #111;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .delete-btn {
+      background: #ef4444;
+      color: white;
+      margin-top: 10px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      margin-top: 8px;
+      margin-bottom: 10px;
+      background: #1e293b;
+      color: white;
+    }
+    .reply-status {
+      color: #38bdf8;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Contact Messages</h1>
+  <div id="authBox" class="login-box">
+    <h3>Admin Login</h3>
+    <input id="username" placeholder="Username" value="admin" />
+    <input id="password" type="password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+  </div>
+  <div id="messages"></div>
+
+  <script>
+    let authHeader = '';
+
+    function login() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      authHeader = 'Basic ' + btoa(`${username}:${password}`);
+      loadMessages();
+    }
+
+    async function loadMessages() {
+      const container = document.getElementById('messages');
+      const authBox = document.getElementById('authBox');
+
+      try {
+        if (!authHeader) {
+          container.innerHTML = '<p class="empty">Please log in to view messages.</p>';
+          return;
+        }
+
+        const res = await fetch('/api/messages', {
+          headers: { Authorization: authHeader }
+        });
+
+        if (res.status === 401) {
+          container.innerHTML = '<p class="empty">Invalid admin login.</p>';
+          return;
+        }
+
+        if (!res.ok) {
+          throw new Error('Unable to load messages');
+        }
+
+        const messages = await res.json();
+        authBox.style.display = 'none';
+
+        if (!messages.length) {
+          container.innerHTML = '<p class="empty">No messages yet.</p>';
+          return;
+        }
+
+        container.innerHTML = messages.map(msg => `
+          <div class="card">
+            <div class="meta">#${msg.id} • ${msg.created_at}</div>
+            <strong>${msg.name}</strong><br />
+            <span>${msg.email}</span>
+            <p>${msg.message}</p>
+            ${msg.reply ? `<p><strong>Reply:</strong> ${msg.reply}</p>` : ''}
+            <textarea id="reply-${msg.id}" placeholder="Type your reply here..."></textarea>
+            <button onclick="sendReply(${msg.id})">Send Reply</button>
+            <button class="delete-btn" onclick="deleteMessage(${msg.id})">Delete</button>
+            <div class="reply-status" id="reply-status-${msg.id}"></div>
+          </div>
+        `).join('');
+      } catch (error) {
+        container.innerHTML = '<p class="empty">Unable to load messages.</p>';
+      }
+    }
+
+    async function sendReply(id) {
+      const textarea = document.getElementById(`reply-${id}`);
+      const status = document.getElementById(`reply-status-${id}`);
+      const reply = textarea.value.trim();
+
+      if (!reply) {
+        status.textContent = 'Please type a reply first.';
+        return;
+      }
+
+      status.textContent = 'Sending reply...';
+      const res = await fetch(`/api/messages/${id}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: authHeader
+        },
+        body: JSON.stringify({ reply })
+      });
+
+      if (res.ok) {
+        status.textContent = 'Reply saved successfully.';
+        textarea.value = '';
+        loadMessages();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        status.textContent = data.error || 'Unable to send reply.';
+      }
+    }
+
+    async function deleteMessage(id) {
+      const res = await fetch(`/api/messages/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: authHeader }
+      });
+
+      if (res.ok) {
+        loadMessages();
+      }
+    }
+  </script>
+</body>
+</html>

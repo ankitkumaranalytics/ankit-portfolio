@@ -1,0 +1,14 @@
+{
+  "name": "ankit-portfolio-db",
+  "version": "1.0.0",
+  "description": "Portfolio website with a simple contact form database",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.1",
+    "express": "^4.21.2",
+    "sqlite3": "^5.1.0"
+  }
+}
