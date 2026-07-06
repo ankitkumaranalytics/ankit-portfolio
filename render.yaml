@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ankit-portfolio-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: ADMIN_USERNAME
+        value: ankit kumar
+      - key: ADMIN_PASSWORD
+        value: Ankit@8757
