@@ -51,6 +51,38 @@
       color: #38bdf8;
       text-decoration: none;
     }
+    .bank-details {
+      background: #111827;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      border: 1px dashed #38bdf8;
+    }
+    .bank-details p {
+      margin: 6px 0;
+    }
+    .payment-form {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .payment-form input,
+    .payment-form textarea {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #fff;
+    }
+    .payment-form button {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #38bdf8;
+      color: #111;
+      font-weight: bold;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -58,6 +90,13 @@
     <a href="index.html" class="back-link">← Back to Portfolio</a>
     <h1>Make a Payment</h1>
     <p>Choose any UPI app below to complete your payment securely.</p>
+
+    <div class="bank-details">
+      <h3>Bank Account Details</h3>
+      <p><strong>Account No:</strong> 7322001700202772</p>
+      <p><strong>IFSC Code:</strong> PUNB0732200</p>
+      <p><strong>Account Holder Name:</strong> ANKIT KUMAR</p>
+    </div>
 
     <div class="payment-card">
       <h3>Google Pay</h3>
@@ -75,6 +114,19 @@
       <h3>Any UPI App</h3>
       <p>Use any UPI-enabled app such as Paytm, BHIM, Amazon Pay, or SBI Pay.</p>
       <a class="upi-btn" href="upi://pay?pa=ankitkumar.data39@oksbi&pn=Ankit%20Kumar&am=100&cu=INR" target="_blank" rel="noopener noreferrer">Pay with UPI</a>
+    </div>
+
+    <div class="payment-card">
+      <h3>Payment Confirmation</h3>
+      <p>After making the payment, please upload a screenshot and enter the UTR number.</p>
+      <form class="payment-form">
+        <input type="text" placeholder="Your Name" />
+        <input type="email" placeholder="Your Email" />
+        <input type="text" placeholder="UTR Number" />
+        <textarea rows="4" placeholder="Payment Note (optional)"></textarea>
+        <input type="file" accept="image/*" />
+        <button type="submit">Submit Payment Details</button>
+      </form>
     </div>
   </div>
 </body>
