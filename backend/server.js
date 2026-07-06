@@ -6,7 +6,8 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'ankit kumar';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Ankit@8757';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const USE_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
@@ -73,8 +74,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 function checkAdminAuth(req, res, next) {
   const authHeader = req.headers.authorization;
+  const expectedHeader = `Basic ${Buffer.from(`${ADMIN_USERNAME}:${ADMIN_PASSWORD}`).toString('base64')}`;
 
-  if (!authHeader || authHeader !== `Basic ${Buffer.from(`admin:${ADMIN_PASSWORD}`).toString('base64')}`) {
+  if (!authHeader || authHeader !== expectedHeader) {
     res.setHeader('WWW-Authenticate', 'Basic realm="Admin"');
     res.status(401).json({ error: 'Unauthorized' });
     return;
