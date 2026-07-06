@@ -342,7 +342,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     throw new Error(data.error || "Unable to save message");
                 }
 
-                formStatus.textContent = "Message saved successfully!";
+                formStatus.textContent = "Message sent successfully!";
                 form.reset();
                 inputs.forEach(input => input.style.border = "none");
 
