@@ -347,7 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 inputs.forEach(input => input.style.border = "none");
 
             } catch (error) {
-                formStatus.textContent = error.message;
+                formStatus.textContent = "";
             }
 
         });
