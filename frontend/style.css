@@ -1010,6 +1010,10 @@ footer p{
         height:220px;
     }
 
+    .hobby-grid{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+    }
+
     .leetcode-card,
     .resume-card{
         flex-direction:column;
@@ -1081,6 +1085,10 @@ footer p{
     .contact-links a{
         text-align:center;
         padding:12px 14px;
+    }
+
+    .hobby-grid{
+        grid-template-columns:1fr;
     }
 }
 

@@ -134,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const revealElements = document.querySelectorAll(
 
-        ".card, .project, .certificate"
+        ".card, .project, .certificate, .hobby-card"
 
     );
 
