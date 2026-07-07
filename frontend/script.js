@@ -13,6 +13,32 @@ document.addEventListener("DOMContentLoaded", () => {
     =============================== */
 
     const navLinks = document.querySelectorAll('nav a');
+    const navToggle = document.querySelector('.nav-toggle');
+    const navMenu = document.querySelector('nav');
+
+    if (navToggle && navMenu) {
+        navToggle.addEventListener('click', () => {
+            const isOpen = navMenu.classList.toggle('open');
+            navToggle.setAttribute('aria-expanded', String(isOpen));
+            document.body.classList.toggle('menu-open', isOpen);
+        });
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('open');
+                navToggle.setAttribute('aria-expanded', 'false');
+                document.body.classList.remove('menu-open');
+            });
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!navMenu.contains(event.target) && !navToggle.contains(event.target)) {
+                navMenu.classList.remove('open');
+                navToggle.setAttribute('aria-expanded', 'false');
+                document.body.classList.remove('menu-open');
+            }
+        });
+    }
 
     navLinks.forEach(link => {
 
@@ -94,77 +120,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     });
 
-    /* ===============================
-       Typing Animation
-    =============================== */
+    /* Typing animation removed per request.
+       Show static heading "Data Analyst" only. */
 
     const typingElement = document.querySelector(".hero-content h3");
-
-    const words = [
-
-        "Data Analyst",
-
-        "SQL Developer",
-
-        "Power BI Developer",
-
-        "Python Programmer"
-
-    ];
-
-    let wordIndex = 0;
-
-    let letterIndex = 0;
-
-    let deleting = false;
-
-    function typeEffect() {
-
-        const currentWord = words[wordIndex];
-
-        if (!deleting) {
-
-            typingElement.textContent = currentWord.substring(0, letterIndex);
-
-            letterIndex++;
-
-            if (letterIndex > currentWord.length) {
-
-                deleting = true;
-
-                setTimeout(typeEffect, 1500);
-
-                return;
-
-            }
-
-        }
-
-        else {
-
-            typingElement.textContent = currentWord.substring(0, letterIndex);
-
-            letterIndex--;
-
-            if (letterIndex === 0) {
-
-                deleting = false;
-
-                wordIndex++;
-
-                if (wordIndex >= words.length)
-
-                    wordIndex = 0;
-
-            }
-
-        }
-
-        setTimeout(typeEffect, deleting ? 50 : 120);
-
+    if (typingElement) {
+        typingElement.textContent = "Data Analyst";
     }
-
-    typeEffect();
 
     /* ===============================
        Scroll Reveal
@@ -359,6 +321,7 @@ document.addEventListener("DOMContentLoaded", () => {
     =============================== */
 
     const topButton = document.createElement("button");
+    topButton.setAttribute("aria-label", "Scroll to top");
 
     topButton.innerHTML = "↑";
 
@@ -455,6 +418,7 @@ document.addEventListener("DOMContentLoaded", () => {
     =============================== */
 
     const toggle = document.createElement("button");
+    toggle.setAttribute("aria-label", "Toggle theme");
 
     toggle.innerHTML = "🌙";
 
