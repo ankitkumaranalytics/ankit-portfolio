@@ -278,6 +278,81 @@ section h2{
     color:#38bdf8;
 }
 
+#hobbies h2{
+    background:linear-gradient(90deg, #38bdf8, #7dd3fc, #f8fafc);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    font-weight:700;
+    letter-spacing:0.02em;
+    margin-bottom:40px;
+}
+
+.hobby-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:22px;
+}
+
+.hobby-card{
+    position:relative;
+    overflow:hidden;
+    background:linear-gradient(135deg, rgba(30,41,59,.95), rgba(15,23,42,.98));
+    border:1px solid rgba(125,211,252,.16);
+    border-radius:20px;
+    padding:24px;
+    box-shadow:0 16px 36px rgba(0,0,0,.28);
+    transition:transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+}
+
+.hobby-card::before{
+    content:"";
+    position:absolute;
+    inset:-1px;
+    background:linear-gradient(120deg, rgba(56,189,248,.24), transparent 45%, rgba(125,211,252,.08));
+    opacity:0;
+    transition:opacity .3s ease;
+    pointer-events:none;
+}
+
+.hobby-card:hover,
+.hobby-card:focus-within{
+    transform:translateY(-8px) scale(1.01);
+    box-shadow:0 22px 44px rgba(56,189,248,.16);
+    border-color:rgba(125,211,252,.35);
+}
+
+.hobby-card:hover::before,
+.hobby-card:focus-within::before{
+    opacity:1;
+}
+
+.hobby-icon{
+    width:56px;
+    height:56px;
+    border-radius:16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-bottom:16px;
+    background:linear-gradient(135deg, rgba(56,189,248,.22), rgba(14,165,233,.08));
+    color:#7dd3fc;
+    font-size:1.25rem;
+    box-shadow:inset 0 0 0 1px rgba(125,211,252,.2);
+}
+
+.hobby-card h3{
+    margin-bottom:10px;
+    color:#f8fafc;
+    font-size:1.05rem;
+}
+
+.hobby-card p{
+    color:#cbd5e1;
+    font-size:0.95rem;
+    line-height:1.7;
+}
+
 /* =========================
    TIMELINE / EDUCATION / ACHIEVEMENTS / TESTIMONIALS / GALLERY
 ========================= */
