@@ -5,6 +5,17 @@
 document.addEventListener("DOMContentLoaded", () => {
 
     const apiBase = window.__API_BASE__ || (window.location.hostname === "localhost" ? "http://localhost:3000" : window.location.origin);
+    const loadingScreen = document.getElementById('loading-screen');
+
+    window.addEventListener('load', () => {
+        if (loadingScreen) {
+            loadingScreen.style.opacity = '0';
+            loadingScreen.style.pointerEvents = 'none';
+            setTimeout(() => {
+                loadingScreen.remove();
+            }, 400);
+        }
+    });
 
     console.log("Portfolio Loaded Successfully");
 
@@ -134,7 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const revealElements = document.querySelectorAll(
 
-        ".card, .project, .certificate, .hobby-card"
+        ".reveal, .reveal-left, .reveal-right, .project-card, .certificate-card, .hobby-card, .blog-card"
 
     );
 
@@ -191,7 +202,7 @@ document.addEventListener("DOMContentLoaded", () => {
             button.classList.add('active');
 
             const cards = document.querySelectorAll(
-                button.closest('section').id === 'projects' ? '.project' : '.certificate'
+                button.closest('section').id === 'projects' ? '.project-card' : '.certificate-card'
             );
 
             cards.forEach(card => {
@@ -320,46 +331,24 @@ document.addEventListener("DOMContentLoaded", () => {
        Scroll To Top Button
     =============================== */
 
-    const topButton = document.createElement("button");
-    topButton.setAttribute("aria-label", "Scroll to top");
+    const topButton = document.getElementById("back-to-top");
 
-    topButton.innerHTML = "↑";
+    if (topButton) {
+        window.addEventListener("scroll", () => {
+            if (window.scrollY > 500) {
+                topButton.classList.add("visible");
+            } else {
+                topButton.classList.remove("visible");
+            }
+        });
 
-    topButton.style.position = "fixed";
-
-    topButton.style.bottom = "30px";
-
-    topButton.style.right = "30px";
-
-    topButton.style.width = "50px";
-
-    topButton.style.height = "50px";
-
-    topButton.style.borderRadius = "50%";
-
-    topButton.style.border = "none";
-
-    topButton.style.background = "#38bdf8";
-
-    topButton.style.fontSize = "22px";
-
-    topButton.style.cursor = "pointer";
-
-    topButton.style.display = "none";
-
-    document.body.appendChild(topButton);
-
-    window.addEventListener("scroll", () => {
-
-        if (window.scrollY > 500)
-
-            topButton.style.display = "block";
-
-        else
-
-            topButton.style.display = "none";
-
-    });
+        topButton.addEventListener("click", () => {
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+        });
+    }
 
     topButton.addEventListener("click", () => {
 
@@ -391,7 +380,7 @@ document.addEventListener("DOMContentLoaded", () => {
        Project Hover Effect
     =============================== */
 
-    const projects = document.querySelectorAll(".project");
+    const projects = document.querySelectorAll(".project-card");
 
     projects.forEach(project => {
 
@@ -414,59 +403,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     /* ===============================
-       Dark Mode Toggle
+       Theme Toggle
     =============================== */
 
-    const toggle = document.createElement("button");
-    toggle.setAttribute("aria-label", "Toggle theme");
+    const savedTheme = window.PortfolioUtils?.getTheme?.() || 'dark';
+    const toggle = document.querySelector('.theme-toggle-nav');
 
-    toggle.innerHTML = "🌙";
-
-    toggle.style.position = "fixed";
-
-    toggle.style.top = "20px";
-
-    toggle.style.right = "20px";
-
-    toggle.style.width = "45px";
-
-    toggle.style.height = "45px";
-
-    toggle.style.border = "none";
-
-    toggle.style.borderRadius = "50%";
-
-    toggle.style.cursor = "pointer";
-
-    document.body.appendChild(toggle);
-
-    let dark = true;
-
-    toggle.addEventListener("click", () => {
-
-        dark = !dark;
-
-        if (dark) {
-
-            document.body.style.background = "#0f172a";
-
-            document.body.style.color = "#fff";
-
-            toggle.innerHTML = "🌙";
-
-        }
-
-        else {
-
-            document.body.style.background = "#ffffff";
-
-            document.body.style.color = "#111";
-
-            toggle.innerHTML = "☀";
-
-        }
-
-    });
+    if (toggle) {
+        window.PortfolioUtils?.setTheme?.(savedTheme);
+        toggle.innerHTML = savedTheme === 'dark' ? '🌙' : '☀';
+        toggle.addEventListener('click', () => {
+            const nextTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            window.PortfolioUtils?.setTheme?.(nextTheme);
+            toggle.innerHTML = nextTheme === 'dark' ? '🌙' : '☀';
+        });
+    }
 
 });
 
