@@ -145,7 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const revealElements = document.querySelectorAll(
 
-        ".reveal, .reveal-left, .reveal-right, .project-card, .certificate-card, .hobby-card, .blog-card"
+".reveal, .reveal-left, .reveal-right, .project-card, .certificate-card, .gallery-item, .hobby-card, .blog-card"
 
     );
 
@@ -401,6 +401,102 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
     });
+
+/* ===============================
+       Gallery Lightbox
+    =============================== */
+
+    const galleryItems = document.querySelectorAll('.gallery-item');
+
+    if (galleryItems.length > 0) {
+        const lightbox = document.createElement('div');
+        lightbox.className = 'lightbox';
+        lightbox.setAttribute('role', 'dialog');
+        lightbox.setAttribute('aria-modal', 'true');
+        lightbox.setAttribute('aria-label', 'Image lightbox');
+
+        const lightboxImg = document.createElement('img');
+        const lightboxCaption = document.createElement('p');
+        lightboxCaption.className = 'lightbox-caption';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'lightbox-close';
+        closeBtn.setAttribute('aria-label', 'Close lightbox');
+        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'lightbox-nav lightbox-prev';
+        prevBtn.setAttribute('aria-label', 'Previous image');
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'lightbox-nav lightbox-next';
+        nextBtn.setAttribute('aria-label', 'Next image');
+        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+
+        lightbox.appendChild(closeBtn);
+        lightbox.appendChild(prevBtn);
+        lightbox.appendChild(nextBtn);
+        lightbox.appendChild(lightboxImg);
+        lightbox.appendChild(lightboxCaption);
+        document.body.appendChild(lightbox);
+
+        let currentIndex = 0;
+
+        function openLightbox(index) {
+            currentIndex = (index + galleryItems.length) % galleryItems.length;
+            const item = galleryItems[currentIndex];
+            const img = item.querySelector('img');
+            const caption = item.getAttribute('data-caption') || 'Campus Life';
+            lightboxImg.src = img.src;
+            lightboxImg.alt = img.alt;
+            lightboxCaption.textContent = caption;
+            lightbox.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            lightbox.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function showImage(direction) {
+            openLightbox(currentIndex + direction);
+        }
+
+        galleryItems.forEach((item, index) => {
+            item.addEventListener('click', () => openLightbox(index));
+        });
+
+        closeBtn.addEventListener('click', closeLightbox);
+
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showImage(-1);
+        });
+
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showImage(1);
+        });
+
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox) {
+                closeLightbox();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (!lightbox.classList.contains('open')) return;
+            if (e.key === 'Escape') {
+                closeLightbox();
+            } else if (e.key === 'ArrowLeft') {
+                showImage(-1);
+            } else if (e.key === 'ArrowRight') {
+                showImage(1);
+            }
+        });
+    }
 
     /* ===============================
        Theme Toggle

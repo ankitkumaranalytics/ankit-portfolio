@@ -115,23 +115,9 @@
     grid-template-columns: 1fr;
   }
 
-  /* Footer */
+/* Footer */
   .footer-content {
     grid-template-columns: 1fr 1fr;
-  }
-
-  /* Gallery */
-  .gallery-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .gallery-card-large {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  .gallery-card-large img {
-    height: 220px;
   }
 }
 
@@ -150,23 +136,27 @@
     margin-bottom: 2rem;
   }
 
-  .skills-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .skills-wrapper {
+    gap: 12px;
   }
 
-  .project-grid,
+  .skill-chip {
+    padding: 10px 14px;
+  }
+
+.project-grid,
   .certificate-grid,
-  .services-grid,
-  .stats-grid,
-  .achievement-grid,
-  .blog-grid,
-  .hobby-grid,
-  .profiles-grid {
+  .achievement-grid {
     grid-template-columns: 1fr;
   }
 
   .gallery-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+  }
+
+  .gallery-item img {
+    height: 140px;
   }
 
   .footer-content {
@@ -185,10 +175,6 @@
 
   .about-details {
     grid-template-columns: 1fr;
-  }
-
-  .github-stats {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -230,30 +216,41 @@
     font-size: var(--text-base);
   }
 
-  .skills-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+  .skill-chip {
+    padding: 10px 14px;
+    font-size: 0.85rem;
   }
 
-  .skill-card {
-    padding: 14px;
-  }
-
-  .skill-card .skill-icon {
-    font-size: 1.4rem;
-    margin-bottom: 6px;
-  }
-
-  .github-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-image .image-wrapper {
+.hero-image .image-wrapper {
     width: min(200px, 55vw);
   }
 
-  .testimonial-card {
-    padding: 20px;
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+  }
+
+  .gallery-item img {
+    height: 120px;
+  }
+
+  .lightbox img {
+    max-width: 94vw;
+    max-height: 78vh;
+  }
+
+  .lightbox-prev {
+    left: 8px;
+  }
+
+  .lightbox-next {
+    right: 8px;
+  }
+
+  .lightbox-nav {
+    width: 42px;
+    height: 42px;
+    font-size: var(--text-lg);
   }
 
   .contact-form {
@@ -289,15 +286,15 @@
     font-size: var(--text-xs);
   }
 
-  .skills-grid {
-    grid-template-columns: 1fr 1fr;
+  .skills-wrapper {
+    gap: 10px;
   }
 }
 
 /* === 320px (Extra Small) === */
 @media (max-width: 320px) {
-  .skills-grid {
-    grid-template-columns: 1fr;
+  .skills-wrapper {
+    gap: 8px;
   }
 }
 

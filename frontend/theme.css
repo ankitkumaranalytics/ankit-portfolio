@@ -199,19 +199,11 @@ main {
 .about-card,
 .info-card,
 .timeline-card,
-.skill-card,
 .project-card,
 .certificate-card,
-.service-card,
 .achievement-card,
-.blog-card,
-.hobby-card,
-.profile-card,
 .contact-card,
-.resume-card,
-.testimonial-card,
-.github-card,
-.stat-card {
+.resume-card {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-card);
@@ -253,71 +245,52 @@ main {
   color: var(--color-primary);
 }
 
-.skills-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 18px;
+.skills-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
 }
 
-.skill-card {
-  padding: 20px;
-  border-radius: var(--radius-lg);
+.skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: var(--radius-full);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
-.skill-card:hover {
-  transform: translateY(-6px);
+.skill-chip:hover {
+  transform: translateY(-4px);
   border-color: var(--color-border-hover);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-glow);
 }
 
-.skill-card .skill-icon {
-  font-size: 1.6rem;
+.skill-chip i {
+  font-size: 1.15rem;
   color: var(--color-primary);
-  margin-bottom: 8px;
 }
 
-.skill-card .skill-name {
-  font-size: 1rem;
-  font-weight: 700;
-  margin-bottom: 8px;
+.skill-chip span {
+  font-weight: 600;
+  font-size: 0.95rem;
 }
 
-.skill-card .skill-level {
-  font-size: 0.8rem;
+.skill-chip em {
+  font-style: normal;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--color-text-dim);
-  margin-bottom: 10px;
-}
-
-.skill-card .skill-progress {
-  margin-top: 10px;
-}
-
-.skill-ring {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  margin: 0 auto 10px;
-  background: conic-gradient(var(--color-primary) calc(var(--percent) * 1%), rgba(255,255,255,.08) 0);
-  position: relative;
-}
-
-.skill-ring::before {
-  content: '';
-  position: absolute;
-  inset: 8px;
-  background: var(--color-bg-card);
-  border-radius: 50%;
-}
-
-.skill-ring span {
-  position: relative;
-  z-index: 1;
-  font-weight: 700;
-  color: var(--color-primary);
-  font-size: 0.9rem;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  background: rgba(56, 189, 248, 0.1);
 }
 
 .timeline {
@@ -353,9 +326,7 @@ main {
   color: var(--color-text-muted);
 }
 
-.project-filters,
-.certificate-filters,
-.blog-filters {
+.certificate-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -363,8 +334,7 @@ main {
   margin-bottom: 24px;
 }
 
-.filter-btn,
-.blog-chip {
+.filter-btn {
   padding: 10px 14px;
   border-radius: var(--radius-full);
   border: 1px solid var(--color-border);
@@ -374,9 +344,7 @@ main {
 }
 
 .filter-btn.active,
-.blog-chip.active,
-.filter-btn:hover,
-.blog-chip:hover {
+.filter-btn:hover {
   background: var(--color-primary);
   color: var(--color-text-dark);
   border-color: var(--color-primary);
@@ -384,11 +352,7 @@ main {
 
 .project-grid,
 .certificate-grid,
-.services-grid,
-.achievement-grid,
-.hobby-grid,
-.profiles-grid,
-.blog-grid {
+.achievement-grid {
   display: grid;
   gap: 20px;
 }
@@ -424,25 +388,19 @@ main {
 .project-card .project-image {
   width: 100%;
   height: 320px;
-  object-fit: cover;
+  object-fit: contain;
+  background: var(--color-bg);
 }
 
 .project-card .project-body {
   padding: 20px;
 }
 
-.service-card,
 .achievement-card,
-.profile-card,
-.stat-card,
-.github-card,
-.blog-card,
-.hobby-card,
 .contact-card,
 .resume-card,
-.testimonial-card,
 .certificate-card,
-.skill-card {
+.gallery-item {
   position: relative;
   transform-style: preserve-3d;
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.82));
@@ -450,18 +408,11 @@ main {
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
-.service-card:hover,
 .achievement-card:hover,
-.profile-card:hover,
-.stat-card:hover,
-.github-card:hover,
-.blog-card:hover,
-.hobby-card:hover,
 .contact-card:hover,
 .resume-card:hover,
-.testimonial-card:hover,
 .certificate-card:hover,
-.skill-card:hover {
+.gallery-item:hover {
   transform: translateY(-10px) rotateX(4deg);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.20);
 }
@@ -509,8 +460,7 @@ main {
 }
 
 .project-card.hidden,
-.certificate-card.hidden,
-.blog-card.hidden {
+.certificate-card.hidden {
   display: none;
 }
 
@@ -534,39 +484,22 @@ main {
   padding: 16px 18px;
 }
 
-.services-grid,
-.achievement-grid,
-.profiles-grid {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+.achievement-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
-.service-card,
-.achievement-card,
-.profile-card,
-.stat-card,
-.github-card,
-.blog-card,
-.hobby-card {
+.achievement-card {
   padding: 22px;
   border-radius: var(--radius-lg);
   transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 
-.service-card:hover,
-.achievement-card:hover,
-.profile-card:hover,
-.stat-card:hover,
-.github-card:hover,
-.blog-card:hover,
-.hobby-card:hover {
+.achievement-card:hover {
   transform: translateY(-6px);
   box-shadow: var(--shadow-lg);
 }
 
-.service-icon,
-.achievement-icon,
-.profile-icon,
-.hobby-icon {
+.achievement-icon {
   width: 52px;
   height: 52px;
   display: grid;
@@ -576,148 +509,6 @@ main {
   color: var(--color-primary);
   font-size: 1.25rem;
   margin-bottom: 12px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 18px;
-}
-
-.stat-card .stat-number {
-  font-size: clamp(1.7rem, 3vw, 2.4rem);
-  font-weight: 700;
-  color: var(--color-primary);
-}
-
-.stat-card .stat-label {
-  color: var(--color-text-muted);
-  margin-top: 6px;
-}
-
-.github-grid {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 20px;
-}
-
-.github-card iframe,
-.github-card img {
-  width: 100%;
-  border-radius: var(--radius-md);
-}
-
-.github-card ul {
-  display: grid;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.github-card li {
-  display: flex;
-  justify-content: space-between;
-  color: var(--color-text-muted);
-  gap: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.blog-search {
-  width: min(420px, 100%);
-  margin: 0 auto 18px;
-  padding: 12px 14px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-card);
-  color: var(--color-text);
-}
-
-.blog-meta {
-  color: var(--color-text-dim);
-  font-size: 0.8rem;
-  margin-bottom: 8px;
-}
-
-.blog-card .blog-body {
-  padding: 18px;
-}
-
-.blog-pagination {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 24px;
-}
-
-.blog-pagination button {
-  min-width: 42px;
-  min-height: 42px;
-  padding: 0 12px;
-  border-radius: var(--radius-full);
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
-}
-
-.blog-pagination button.active {
-  background: var(--color-primary);
-  color: var(--color-text-dark);
-  border-color: var(--color-primary);
-}
-
-.testimonials-carousel {
-  max-width: 760px;
-  margin: 0 auto;
-  overflow: hidden;
-}
-
-.testimonials-track {
-  display: flex;
-  transition: transform 0.5s ease;
-}
-
-.testimonial-slide {
-  min-width: 100%;
-  padding: 0 8px;
-}
-
-.testimonial-card {
-  padding: 24px;
-  border-radius: var(--radius-lg);
-  text-align: center;
-}
-
-.testimonial-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  margin: 0 auto 12px;
-  display: grid;
-  place-items: center;
-  color: var(--color-primary);
-  background: rgba(56, 189, 248, 0.1);
-  font-size: 1.4rem;
-}
-
-.testimonial-stars {
-  color: #f59e0b;
-  margin-bottom: 12px;
-}
-
-.carousel-controls {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.carousel-btn {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
 }
 
 .contact-grid {
@@ -832,7 +623,6 @@ main {
 @media (max-width: 1024px) {
   .hero,
   .about-content,
-  .github-grid,
   .resume-preview,
   .contact-grid {
     grid-template-columns: 1fr;
@@ -859,12 +649,7 @@ main {
 @media (max-width: 768px) {
   .project-grid,
   .certificate-grid,
-  .services-grid,
-  .achievement-grid,
-  .profiles-grid,
-  .blog-grid,
-  .stats-grid,
-  .skills-grid {
+  .achievement-grid {
     grid-template-columns: 1fr;
   }
 
