@@ -362,6 +362,285 @@ document.addEventListener("DOMContentLoaded", () => {
 
     });
 
+/* ===============================
+       Live Location Map
+    =============================== */
+
+    const mapEl = document.getElementById('live-map');
+    const locationStatus = document.getElementById('locationStatus');
+    const statusTextEl = locationStatus ? locationStatus.querySelector('.loc-status-text') : null;
+    const locLatEl = document.getElementById('locLat');
+    const locLngEl = document.getElementById('locLng');
+    const locAccEl = document.getElementById('locAcc');
+    const locTimeEl = document.getElementById('locTime');
+    const shareBtn = document.getElementById('loc-share-btn');
+    const shareBtnText = shareBtn ? shareBtn.querySelector('span') : null;
+    const locHintEl = document.getElementById('locHint');
+
+    // Owner mode: persisted in localStorage so a single opt-in remembers the
+    // user as broadcaster on later visits. ?owner=1 remains a manual override.
+    const OWNER_KEY = 'portfolio_owner_mode';
+    let isOwner = new URLSearchParams(window.location.search).has('owner');
+    if (isOwner) {
+      try { localStorage.setItem(OWNER_KEY, '1'); } catch (e) {}
+    } else {
+      try { isOwner = localStorage.getItem(OWNER_KEY) === '1'; } catch (e) {}
+    }
+
+    // Geolocation only works in a secure context (HTTPS or localhost).
+    const secureContext = window.isSecureContext;
+    const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+    function setStatus(message, state) {
+      if (!locationStatus || !statusTextEl) return;
+      statusTextEl.textContent = message;
+      locationStatus.classList.remove('live', 'error', 'searching');
+      if (state) locationStatus.classList.add(state);
+    }
+
+    function formatTime(isoOrStr) {
+      if (!isoOrStr) return '—';
+      const d = new Date(isoOrStr);
+      if (isNaN(d.getTime())) return isoOrStr;
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
+        ' · ' + d.toLocaleDateString();
+    }
+
+    function updateMap(map, marker, accuracyCircle, lat, lng, accuracy, updatedAt) {
+      if (map && marker) {
+        marker.setLatLng([lat, lng]);
+        marker.bindPopup('📍 Ankit\'s live location').closeTooltip();
+        if (accuracyCircle) accuracyCircle.setLatLng([lat, lng]);
+        map.setView([lat, lng], map.getZoom() >= 15 ? map.getZoom() : 15, { animate: true });
+      }
+      if (locLatEl) locLatEl.textContent = lat.toFixed(6);
+      if (locLngEl) locLngEl.textContent = lng.toFixed(6);
+      if (locAccEl) locAccEl.textContent = accuracy ? `±${Math.round(accuracy)} m` : '—';
+      if (locTimeEl) locTimeEl.textContent = formatTime(updatedAt);
+    }
+
+    function createBaseMap(lat, lng, zoom) {
+      const map = L.map(mapEl, { scrollWheelZoom: false }).setView([lat, lng], zoom);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+      const marker = L.marker([lat, lng]).addTo(map);
+      const accuracyCircle = L.circle([lat, lng], { radius: 100, color: '#38bdf8', fillOpacity: 0.1 }).addTo(map);
+      return { map, marker, accuracyCircle };
+    }
+
+    function setShareUi(active) {
+      if (!shareBtn || !shareBtnText) return;
+      if (active) {
+        shareBtn.classList.add('is-active');
+        shareBtnText.textContent = 'Stop sharing my location';
+        if (locHintEl) locHintEl.textContent = 'Sharing live — updates stop when this page is closed.';
+      } else {
+        shareBtn.classList.remove('is-active');
+        shareBtnText.textContent = 'Share my live location';
+        if (locHintEl) locHintEl.textContent = 'Your location is shared only while this page is open.';
+      }
+    }
+
+    // Holds a reference to the currently displayed map + marker so the
+    // visitor poller can update the live marker as the broadcast moves.
+    const currentViewerMap = { map: null, marker: null, accuracyCircle: null };
+
+    // Visitor fallback: if there is no broadcast, show the visitor's own
+    // location with a note, so the map never just sits empty.
+    function initViewerMap(location) {
+      if (!mapEl || typeof L === 'undefined') return;
+
+      const showVisitorLocation = () => {
+        if (!navigator.geolocation) {
+          setStatus('No broadcast — geolocation unsupported', 'searching');
+          return;
+        }
+        setStatus('No broadcast yet — showing your location', 'searching');
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+          if (!mapEl._leaflet_id) {
+            const base = createBaseMap(latitude, longitude, 15);
+            base.map._locViewer = true;
+            base.map._locOwned = false;
+            base.marker.bindPopup('📍 Your location (no broadcast available)').openPopup();
+            currentViewerMap.map = base.map;
+            currentViewerMap.marker = base.marker;
+            currentViewerMap.accuracyCircle = base.accuracyCircle;
+            updateMap(base.map, base.marker, base.accuracyCircle, latitude, longitude, accuracy, new Date().toISOString());
+            setStatus('Showing your location', 'live');
+          }
+        }, (err) => {
+          setStatus('No broadcast and no location access', 'error');
+        }, { enableHighAccuracy: true, timeout: 15000 });
+      };
+
+      if (location) {
+        const lat = parseFloat(location.lat);
+        const lng = parseFloat(location.lng);
+        const base = createBaseMap(lat, lng, 13);
+        base.map._locViewer = true;
+        base.map._locOwned = false;
+        base.marker.bindPopup('📍 Ankit\'s live location').openPopup();
+        currentViewerMap.map = base.map;
+        currentViewerMap.marker = base.marker;
+        currentViewerMap.accuracyCircle = base.accuracyCircle;
+        updateMap(base.map, base.marker, base.accuracyCircle, lat, lng, location.accuracy, location.updated_at);
+        setStatus('Live location updated', 'live');
+      } else {
+        showVisitorLocation();
+      }
+
+      // Poll the latest broadcast location periodically for visitors.
+      let lastLat = location ? parseFloat(location.lat) : null;
+      let lastLng = location ? parseFloat(location.lng) : null;
+      setInterval(async () => {
+        try {
+          const res = await fetch(`${apiBase}/api/location/latest`);
+          const data = await res.json();
+          const loc = data && data.location;
+          if (loc && loc.lat != null && loc.lng != null) {
+            const newLat = parseFloat(loc.lat);
+            const newLng = parseFloat(loc.lng);
+            const moved = lastLat == null || Math.abs(newLat - lastLat) > 0.00001 || Math.abs(newLng - lastLng) > 0.00001;
+            if (moved) {
+              lastLat = newLat;
+              lastLng = newLng;
+              if (!mapEl._leaflet_id) {
+                // A broadcast became available after the fallback was shown.
+                const base = createBaseMap(newLat, newLng, 15);
+                base.map._locViewer = true;
+                base.map._locOwned = false;
+                base.marker.bindPopup('📍 Ankit\'s live location').openPopup();
+                currentViewerMap.map = base.map;
+                currentViewerMap.marker = base.marker;
+                currentViewerMap.accuracyCircle = base.accuracyCircle;
+                updateMap(base.map, base.marker, base.accuracyCircle, newLat, newLng, loc.accuracy, loc.updated_at);
+              } else if (currentViewerMap.marker) {
+                updateMap(currentViewerMap.map, currentViewerMap.marker, currentViewerMap.accuracyCircle, newLat, newLng, loc.accuracy, loc.updated_at);
+              }
+              setStatus('Live location updated', 'live');
+            }
+          }
+        } catch (e) {
+          // ignore transient errors
+        }
+      }, 10000);
+    }
+
+    function startBroadcast() {
+      if (!navigator.geolocation) {
+        setStatus('Geolocation is not supported by your browser', 'error');
+        return;
+      }
+      if (!secureContext && !isLocalhost) {
+        setStatus('Location requires HTTPS (or localhost) to work', 'error');
+        return;
+      }
+
+      setStatus('Acquiring live location…', 'searching');
+      setShareUi(true);
+      try { localStorage.setItem(OWNER_KEY, '1'); } catch (e) {}
+      isOwner = true;
+
+      let map = null;
+      let marker = null;
+      let accuracyCircle = null;
+      let lastSent = 0;
+
+      function onPosition(pos) {
+        const { latitude, longitude, accuracy, heading, speed } = pos.coords;
+        const now = Date.now();
+
+        if (!map) {
+          map = L.map(mapEl, { scrollWheelZoom: false }).setView([latitude, longitude], 15);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+          }).addTo(map);
+marker = L.marker([latitude, longitude]).addTo(map);
+          marker.bindPopup('📍 You are here (owner)').openPopup();
+          accuracyCircle = L.circle([latitude, longitude], { radius: accuracy || 100, color: '#22c55e', fillOpacity: 0.12 }).addTo(map);
+          currentViewerMap.map = map;
+          currentViewerMap.marker = marker;
+          currentViewerMap.accuracyCircle = accuracyCircle;
+        } else {
+          marker.setLatLng([latitude, longitude]);
+          accuracyCircle.setLatLng([latitude, longitude]).setRadius(accuracy || 100);
+          map.setView([latitude, longitude], 15, { animate: true });
+        }
+
+        // Throttle broadcasting to at most once every 3 seconds.
+        if (now - lastSent > 3000) {
+          lastSent = now;
+          fetch(`${apiBase}/api/location`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat: latitude, lng: longitude, accuracy, heading, speed })
+          }).catch(() => {});
+        }
+
+        updateMap(map, marker, accuracyCircle, latitude, longitude, accuracy, new Date().toISOString());
+        setStatus('Broadcasting live location', 'live');
+      }
+
+      function onError(err) {
+        let msg = 'Location unavailable';
+        if (err.code === err.PERMISSION_DENIED) msg = 'Location permission denied';
+        else if (err.code === err.POSITION_UNAVAILABLE) msg = 'Location unavailable';
+        else if (err.code === err.TIMEOUT) msg = 'Location request timed out';
+        setStatus(msg, 'error');
+        setShareUi(false);
+        try { localStorage.removeItem(OWNER_KEY); } catch (e) {}
+      }
+
+      navigator.geolocation.watchPosition(onPosition, onError, {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 20000
+      });
+    }
+
+    function stopBroadcast() {
+      try { localStorage.removeItem(OWNER_KEY); } catch (e) {}
+      isOwner = false;
+      setShareUi(false);
+      setStatus('Location sharing stopped', 'searching');
+      // Reload viewer so it shows the last broadcast (if any) or fallback.
+      window.location.reload();
+    }
+
+    if (mapEl) {
+      if (shareBtn) {
+        shareBtn.addEventListener('click', () => {
+          if (isOwner) {
+            stopBroadcast();
+          } else {
+            startBroadcast();
+          }
+        });
+      }
+
+      if (isOwner) {
+        // Owner: track device and broadcast live location.
+        startBroadcast();
+      } else {
+        // Visitor: fetch and display the latest broadcast location.
+        (async () => {
+          let location = null;
+          try {
+            const res = await fetch(`${apiBase}/api/location/latest`);
+            const data = await res.json();
+            location = data && data.location ? data.location : null;
+          } catch (e) {
+            location = null;
+          }
+          initViewerMap(location);
+        })();
+      }
+    }
+
     /* ===============================
        Footer Year
     =============================== */

@@ -38,38 +38,60 @@ app.use(express.static(frontendPath));
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Database connection failed:', err.message);
-  } else {
-    db.run(`
-      CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL,
-        message TEXT NOT NULL,
-        reply TEXT,
-        replied_at DATETIME,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `, (createErr) => {
-      if (createErr) {
-        console.error('Table setup failed:', createErr.message);
-        return;
-      }
-
-      db.run('ALTER TABLE messages ADD COLUMN reply TEXT', (replyErr) => {
-        if (replyErr && !/duplicate column name/i.test(replyErr.message)) {
-          console.error('Reply column setup failed:', replyErr.message);
-        }
-      });
-
-      db.run('ALTER TABLE messages ADD COLUMN replied_at DATETIME', (repliedAtErr) => {
-        if (repliedAtErr && !/duplicate column name/i.test(repliedAtErr.message)) {
-          console.error('Replied at column setup failed:', repliedAtErr.message);
-        }
-      });
-
-      console.log('Local database ready');
-    });
+    return;
   }
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      message TEXT NOT NULL,
+      reply TEXT,
+      replied_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (createErr) => {
+    if (createErr) {
+      console.error('Table setup failed:', createErr.message);
+      return;
+    }
+
+    db.run('ALTER TABLE messages ADD COLUMN reply TEXT', (replyErr) => {
+      if (replyErr && !/duplicate column name/i.test(replyErr.message)) {
+        console.error('Reply column setup failed:', replyErr.message);
+      }
+    });
+
+    db.run('ALTER TABLE messages ADD COLUMN replied_at DATETIME', (repliedAtErr) => {
+      if (repliedAtErr && !/duplicate column name/i.test(repliedAtErr.message)) {
+        console.error('Replied at column setup failed:', repliedAtErr.message);
+      }
+    });
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS location (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        lat REAL,
+        lng REAL,
+        accuracy REAL,
+        heading REAL,
+        speed REAL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `, (locErr) => {
+      if (locErr) {
+        console.error('Location table setup failed:', locErr.message);
+      } else {
+        db.run('INSERT OR IGNORE INTO location (id, lat, lng, accuracy, updated_at) VALUES (1, NULL, NULL, NULL, CURRENT_TIMESTAMP)', (seedErr) => {
+          if (seedErr) {
+            console.error('Location seed row failed:', seedErr.message);
+          }
+        });
+        console.log('Local database ready');
+      }
+    });
+  });
 });
 
 function checkAdminAuth(req, res, next) {
@@ -170,6 +192,34 @@ function deleteMessageFromLocalDb(id) {
   });
 }
 
+function getLatestLocationFromLocalDb() {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT lat, lng, accuracy, heading, speed, updated_at FROM location WHERE id = 1', [], (err, row) => {
+      if (err) {
+        reject(new Error('Failed to fetch location'));
+        return;
+      }
+      resolve(row || null);
+    });
+  });
+}
+
+function saveLocationToLocalDb(lat, lng, accuracy, heading, speed) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'UPDATE location SET lat = ?, lng = ?, accuracy = ?, heading = ?, speed = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1',
+      [lat, lng, accuracy, heading, speed],
+      (err) => {
+        if (err) {
+          reject(new Error('Failed to save location'));
+          return;
+        }
+        resolve({ success: true });
+      }
+    );
+  });
+}
+
 app.get('/api/messages', checkAdminAuth, async (req, res) => {
   try {
     const rows = USE_SUPABASE
@@ -257,6 +307,82 @@ app.post('/api/messages', async (req, res) => {
 
     const result = await saveMessageToLocalDb(name, email, message);
     res.status(201).json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/location/latest', async (req, res) => {
+  try {
+    let row = null;
+    if (USE_SUPABASE) {
+      const rows = await supabaseRequest('/rest/v1/location?select=lat,lng,accuracy,heading,speed,updated_at');
+      row = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+    } else {
+      row = await getLatestLocationFromLocalDb();
+    }
+
+    if (!row || row.lat == null || row.lng == null) {
+      res.json({ location: null });
+      return;
+    }
+
+    res.json({ location: row });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/location', async (req, res) => {
+  const { lat, lng, accuracy, heading, speed } = req.body;
+
+  if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    res.status(400).json({ error: 'Valid lat and lng are required' });
+    return;
+  }
+
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    res.status(400).json({ error: 'Coordinates are out of range' });
+    return;
+  }
+
+  try {
+    if (USE_SUPABASE) {
+      const exists = await supabaseRequest('/rest/v1/location?select=id');
+
+      if (Array.isArray(exists) && exists.length > 0) {
+        await supabaseRequest('/rest/v1/location?id=eq.1', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            lat,
+            lng,
+            accuracy: accuracy || null,
+            heading: heading || null,
+            speed: speed || null,
+            updated_at: new Date().toISOString()
+          })
+        });
+      } else {
+        await supabaseRequest('/rest/v1/location', {
+          method: 'POST',
+          body: JSON.stringify([
+            {
+              id: 1,
+              lat,
+              lng,
+              accuracy: accuracy || null,
+              heading: heading || null,
+              speed: speed || null,
+              updated_at: new Date().toISOString()
+            }
+          ])
+        });
+      }
+    } else {
+      await saveLocationToLocalDb(lat, lng, accuracy || null, heading || null, speed || null);
+    }
+
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
