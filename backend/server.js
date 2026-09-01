@@ -3,11 +3,22 @@ const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'ankit kumar';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Ankit@8757';
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || 'change-this-secret-in-production';
+const ADMIN_SESSION_COOKIE = 'portfolio_admin_session';
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const SMTP_HOST = process.env.SMTP_HOST;
+const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASSWORD = process.env.SMTP_PASSWORD;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const EMAIL_FROM_NAME = process.env.EMAIL_FROM_NAME || 'Portfolio Contact Form';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const USE_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
@@ -37,8 +48,118 @@ if (!fs.existsSync(dbPath) && fs.existsSync(rootDbPath)) {
   fs.copyFileSync(rootDbPath, dbPath);
 }
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json());
+
+function safeEqual(a, b) {
+  const aBuffer = Buffer.from(String(a));
+  const bBuffer = Buffer.from(String(b));
+
+  if (aBuffer.length !== bBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(aBuffer, bBuffer);
+}
+
+function parseCookieHeader(cookieHeader = '') {
+  return cookieHeader.split(';').reduce((cookies, rawPair) => {
+    const pair = rawPair.trim();
+    if (!pair) return cookies;
+    const [name, ...rest] = pair.split('=');
+    cookies[name] = decodeURIComponent(rest.join('='));
+    return cookies;
+  }, {});
+}
+
+function signSessionPayload(payload) {
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', ADMIN_SESSION_SECRET)
+    .update(encodedPayload)
+    .digest('base64url');
+  return `${encodedPayload}.${signature}`;
+}
+
+function verifySessionToken(token) {
+  if (!token || typeof token !== 'string') {
+    return null;
+  }
+
+  const [payloadPart, signaturePart] = token.split('.');
+  if (!payloadPart || !signaturePart) {
+    return null;
+  }
+
+  const expectedSignature = crypto.createHmac('sha256', ADMIN_SESSION_SECRET)
+    .update(payloadPart)
+    .digest('base64url');
+
+  if (!safeEqual(signaturePart, expectedSignature)) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(payloadPart, 'base64url').toString('utf8'));
+    if (!payload.username || !payload.expiresAt || payload.expiresAt < Date.now()) {
+      return null;
+    }
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
+
+function getAdminSessionFromRequest(req) {
+  const cookies = parseCookieHeader(req.headers.cookie || '');
+  const token = cookies[ADMIN_SESSION_COOKIE];
+  return verifySessionToken(token);
+}
+
+function setAdminSessionCookie(res, username) {
+  const payload = {
+    username,
+    expiresAt: Date.now() + SESSION_TTL_MS
+  };
+
+  const token = signSessionPayload(payload);
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  res.cookie(ADMIN_SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProduction,
+    maxAge: SESSION_TTL_MS,
+    path: '/'
+  });
+}
+
+function clearAdminSessionCookie(res) {
+  res.clearCookie(ADMIN_SESSION_COOKIE, { path: '/' });
+}
+
+function requireAdmin(req, res, next) {
+  const session = getAdminSessionFromRequest(req);
+  const authHeader = req.headers.authorization;
+
+  if (session && session.username === ADMIN_USERNAME) {
+    req.adminUser = session.username;
+    return next();
+  }
+
+  if (authHeader) {
+    const expectedHeader = `Basic ${Buffer.from(`${ADMIN_USERNAME}:${ADMIN_PASSWORD}`).toString('base64')}`;
+    if (safeEqual(authHeader, expectedHeader)) {
+      req.adminUser = ADMIN_USERNAME;
+      return next();
+    }
+  }
+
+  res.setHeader('WWW-Authenticate', 'Basic realm="Admin"');
+  res.status(401).json({ error: 'Unauthorized' });
+}
 
 // Security: Sanitize input
 function sanitizeInput(str) {
@@ -165,19 +286,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
     });
   });
 });
-
-function checkAdminAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  const expectedHeader = `Basic ${Buffer.from(`${ADMIN_USERNAME}:${ADMIN_PASSWORD}`).toString('base64')}`;
-
-  if (!authHeader || authHeader !== expectedHeader) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Admin"');
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-
-  next();
-}
 
 async function supabaseRequest(endpoint, options = {}) {
   const response = await fetch(`${SUPABASE_URL}${endpoint}`, {
@@ -310,7 +418,90 @@ function saveLocationToLocalDb(lat, lng, accuracy, heading, speed) {
   });
 }
 
-app.get('/api/messages', checkAdminAuth, async (req, res) => {
+async function sendContactNotification({ name, email, subject, message, createdAt }) {
+  const hasSmtpConfig = SMTP_HOST && SMTP_USER && SMTP_PASSWORD && ADMIN_EMAIL;
+  if (!hasSmtpConfig) {
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASSWORD
+    }
+  });
+
+  await transporter.sendMail({
+    from: `${EMAIL_FROM_NAME} <${SMTP_USER}>`,
+    to: ADMIN_EMAIL,
+    replyTo: email,
+    subject: `New contact message: ${subject}`,
+    text: [
+      `Visitor Name: ${name}`,
+      `Visitor Email: ${email}`,
+      `Subject: ${subject}`,
+      `Submitted At: ${new Date(createdAt).toLocaleString()}`,
+      '',
+      'Message:',
+      message
+    ].join('\n'),
+    html: `
+      <h3>New Contact Message</h3>
+      <p><strong>Name:</strong> ${name}</p>
+      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Subject:</strong> ${subject}</p>
+      <p><strong>Submitted:</strong> ${new Date(createdAt).toLocaleString()}</p>
+      <p><strong>Message:</strong></p>
+      <div>${message.replace(/\n/g, '<br>')}</div>
+    `
+  });
+}
+
+app.get('/api/admin/session', (req, res) => {
+  const session = getAdminSessionFromRequest(req);
+  if (session && session.username === ADMIN_USERNAME) {
+    res.json({ authenticated: true, username: ADMIN_USERNAME });
+    return;
+  }
+
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    const expectedHeader = `Basic ${Buffer.from(`${ADMIN_USERNAME}:${ADMIN_PASSWORD}`).toString('base64')}`;
+    if (safeEqual(authHeader, expectedHeader)) {
+      res.json({ authenticated: true, username: ADMIN_USERNAME });
+      return;
+    }
+  }
+
+  res.status(401).json({ authenticated: false });
+});
+
+app.post('/api/admin/login', (req, res) => {
+  const { username, password } = req.body || {};
+
+  if (!username || !password) {
+    res.status(400).json({ error: 'Username and password are required' });
+    return;
+  }
+
+  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+    res.status(401).json({ error: 'Invalid admin credentials' });
+    return;
+  }
+
+  setAdminSessionCookie(res, username);
+  res.json({ success: true, username });
+});
+
+app.post('/api/admin/logout', (req, res) => {
+  clearAdminSessionCookie(res);
+  res.json({ success: true });
+});
+
+app.get('/api/messages', requireAdmin, async (req, res) => {
   try {
     const rows = USE_SUPABASE
       ? await supabaseRequest('/rest/v1/messages?select=id,name,email,message,created_at&order=created_at.desc')
@@ -322,7 +513,7 @@ app.get('/api/messages', checkAdminAuth, async (req, res) => {
   }
 });
 
-app.post('/api/messages/:id/reply', checkAdminAuth, async (req, res) => {
+app.post('/api/messages/:id/reply', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { reply } = req.body;
 
@@ -353,7 +544,7 @@ app.post('/api/messages/:id/reply', checkAdminAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/messages/:id', checkAdminAuth, async (req, res) => {
+app.delete('/api/messages/:id', requireAdmin, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -376,7 +567,7 @@ app.delete('/api/messages/:id', checkAdminAuth, async (req, res) => {
 });
 
 // Update message status (read, replied, archived)
-app.patch('/api/messages/:id/status', checkAdminAuth, async (req, res) => {
+app.patch('/api/messages/:id/status', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
@@ -464,6 +655,8 @@ app.post('/api/messages', async (req, res) => {
     recordSubmission(clientIp);
 
     try {
+      let createdMessage = null;
+
       if (USE_SUPABASE) {
         const insertedRows = await supabaseRequest('/rest/v1/messages', {
           method: 'POST',
@@ -479,12 +672,26 @@ app.post('/api/messages', async (req, res) => {
           headers: { Prefer: 'return=representation' }
         });
 
-        res.status(201).json({ success: true, id: insertedRows?.[0]?.id || null });
-        return;
+        createdMessage = { success: true, id: insertedRows?.[0]?.id || null };
+      } else {
+        createdMessage = await saveMessageToLocalDb(sanitizedName, sanitizedEmail, sanitizedSubject, sanitizedMessage);
       }
 
-      const result = await saveMessageToLocalDb(sanitizedName, sanitizedEmail, sanitizedSubject, sanitizedMessage);
-      res.status(201).json(result);
+      if (createdMessage && createdMessage.success) {
+        try {
+          await sendContactNotification({
+            name: sanitizedName,
+            email: sanitizedEmail,
+            subject: sanitizedSubject,
+            message: sanitizedMessage,
+            createdAt: new Date().toISOString()
+          });
+        } catch (emailError) {
+          console.error('Email notification failed:', emailError.message);
+        }
+      }
+
+      res.status(201).json(createdMessage);
     } catch (dbErr) {
       console.error('Database error:', dbErr.message);
       res.status(500).json({ error: 'Failed to save your message. Please try again later.' });

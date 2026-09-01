@@ -451,22 +451,27 @@
     let currentFilter = 'all';
     let currentSearchTerm = '';
 
-    // Load credentials or saved admin session from a previous login
-    window.addEventListener('load', () => {
+    // Restore saved username and verify whether the current browser already has a valid admin session.
+    window.addEventListener('load', async () => {
       const savedUsername = localStorage.getItem('adminUsername');
-      const savedAuthHeader = localStorage.getItem('adminAuthHeader');
-
       if (savedUsername) {
         document.getElementById('username').value = savedUsername;
       }
 
-      if (savedAuthHeader) {
-        authHeader = savedAuthHeader;
-        loadMessages();
+      try {
+        const sessionResponse = await fetch(`${apiBase}/api/admin/session`, {
+          credentials: 'same-origin'
+        });
+
+        if (sessionResponse.ok) {
+          await loadMessages();
+        }
+      } catch (error) {
+        console.log('No active admin session found.');
       }
     });
 
-    function login() {
+    async function login() {
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
       
@@ -475,18 +480,45 @@
         return;
       }
 
-      authHeader = 'Basic ' + btoa(`${username}:${password}`);
-      localStorage.setItem('adminUsername', username);
-      localStorage.setItem('adminAuthHeader', authHeader);
-      loadMessages();
+      try {
+        const res = await fetch(`${apiBase}/api/admin/login`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || 'Invalid admin credentials');
+        }
+
+        localStorage.setItem('adminUsername', username);
+        authHeader = 'Basic ' + btoa(`${username}:${password}`);
+        await loadMessages();
+      } catch (error) {
+        alert(error.message || 'Login failed');
+      }
     }
 
-    function logout() {
+    async function logout() {
       authHeader = '';
       allMessages = [];
       currentFilter = 'all';
       currentSearchTerm = '';
-      localStorage.removeItem('adminAuthHeader');
+
+      try {
+        await fetch(`${apiBase}/api/admin/logout`, {
+          method: 'POST',
+          credentials: 'same-origin'
+        });
+      } catch (error) {
+        console.log('Logout request failed silently.');
+      }
+
+      localStorage.removeItem('adminUsername');
       document.getElementById('loginBox').style.display = 'block';
       document.getElementById('adminPanel').style.display = 'none';
       document.getElementById('headerSection').style.display = 'none';
@@ -509,7 +541,8 @@
         messagesContainer.innerHTML = '<p class="empty">Loading messages...</p>';
 
         const res = await fetch(`${apiBase}/api/messages`, {
-          headers: { Authorization: authHeader }
+          credentials: 'same-origin',
+          headers: authHeader ? { Authorization: authHeader } : {}
         });
 
         if (res.status === 401) {
