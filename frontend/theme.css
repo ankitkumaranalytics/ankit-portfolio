@@ -372,6 +372,27 @@ main {
   transform-style: preserve-3d;
 }
 
+.project-badge {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  color: #dbeafe;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 .project-card:hover {
   transform: translateY(-16px) rotateX(6deg) rotateY(1deg);
   box-shadow: 0 32px 100px rgba(0, 0, 0, 0.28);
