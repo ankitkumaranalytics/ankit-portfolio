@@ -392,6 +392,93 @@ main {
   background: var(--color-bg);
 }
 
+.project-card .project-visual {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 20px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.project-card .jobpulse-visual {
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.4), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(168, 85, 247, 0.35), transparent 30%),
+    linear-gradient(135deg, #0f172a 0%, #111827 50%, #1d4ed8 100%);
+}
+
+.project-card .jobpulse-visual::before {
+  content: "";
+  position: absolute;
+  inset: 16px 18px auto auto;
+  width: 140px;
+  height: 140px;
+  border-radius: 20px;
+  background: rgba(14, 116, 144, 0.2);
+  border: 1px solid rgba(125, 211, 252, 0.25);
+  box-shadow: 0 0 0 16px rgba(14, 116, 144, 0.08);
+  transform: rotate(12deg);
+}
+
+.project-card .jobpulse-visual::after {
+  content: "";
+  position: absolute;
+  left: 26px;
+  bottom: 34px;
+  width: 180px;
+  height: 90px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
+}
+
+.project-card .project-visual-badge {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 1;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  color: #dbeafe;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.project-card .project-visual-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.project-card .project-visual-content span {
+  color: #e2e8f0;
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.project-card .project-visual-content strong {
+  color: #f8fafc;
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+
 .project-card .project-body {
   padding: 20px;
 }
