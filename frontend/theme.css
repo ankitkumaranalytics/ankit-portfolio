@@ -409,6 +409,13 @@ main {
     linear-gradient(135deg, #0f172a 0%, #111827 50%, #1d4ed8 100%);
 }
 
+.project-card .finance-visual {
+  background:
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.32), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(250, 204, 21, 0.22), transparent 30%),
+    linear-gradient(135deg, #052e16 0%, #0f172a 45%, #14532d 100%);
+}
+
 .project-card .jobpulse-visual::before {
   content: "";
   position: absolute;
@@ -422,6 +429,19 @@ main {
   transform: rotate(12deg);
 }
 
+.project-card .finance-visual::before {
+  content: "";
+  position: absolute;
+  inset: 18px 20px auto auto;
+  width: 148px;
+  height: 118px;
+  border-radius: 18px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(134, 239, 172, 0.25);
+  box-shadow: 0 0 0 16px rgba(16, 185, 129, 0.08);
+  transform: rotate(10deg);
+}
+
 .project-card .jobpulse-visual::after {
   content: "";
   position: absolute;
@@ -432,6 +452,19 @@ main {
   border-radius: 14px;
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
+}
+
+.project-card .finance-visual::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  bottom: 34px;
+  width: 205px;
+  height: 98px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(134, 239, 172, 0.2);
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
 }
 
