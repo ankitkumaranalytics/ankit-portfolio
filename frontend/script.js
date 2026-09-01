@@ -255,76 +255,175 @@ document.addEventListener("DOMContentLoaded", () => {
     const formStatus = document.getElementById("formStatus");
     const nameInput = document.getElementById("name");
     const emailInput = document.getElementById("email");
+    const subjectInput = document.getElementById("subject");
     const messageInput = document.getElementById("message");
+    const submitBtn = document.getElementById("submitBtn");
+    let isSubmitting = false;
 
-    if (form && nameInput && emailInput && messageInput) {
+    // Email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        form.addEventListener("submit", async function (e) {
+    // Validate email format
+    function isValidEmail(email) {
+      return emailRegex.test(email) && email.length <= 255;
+    }
 
-            e.preventDefault();
+    // Show error message
+    function showError(message) {
+      formStatus.textContent = message;
+      formStatus.style.color = "#ef4444";
+      formStatus.style.marginTop = "12px";
+    }
 
-            const inputs = [nameInput, emailInput, messageInput];
+    // Show success message
+    function showSuccess(message) {
+      formStatus.textContent = message;
+      formStatus.style.color = "#10b981";
+      formStatus.style.marginTop = "12px";
+    }
 
-            let valid = true;
+    // Reset status message
+    function clearStatus() {
+      formStatus.textContent = "";
+      formStatus.style.color = "";
+    }
 
-            inputs.forEach(input => {
+    // Client-side validation
+    function validateForm() {
+      const name = nameInput.value.trim();
+      const email = emailInput.value.trim();
+      const subject = subjectInput.value.trim();
+      const message = messageInput.value.trim();
 
-                if (input.value.trim() === "") {
+      if (!name || name.length === 0) {
+        showError("Please enter your name.");
+        return false;
+      }
 
-                    input.style.border = "2px solid red";
-                    valid = false;
+      if (name.length > 100) {
+        showError("Name must be less than 100 characters.");
+        return false;
+      }
 
-                }
+      if (!email || email.length === 0) {
+        showError("Please enter your email address.");
+        return false;
+      }
 
-                else {
+      if (!isValidEmail(email)) {
+        showError("Please enter a valid email address.");
+        return false;
+      }
 
-                    input.style.border = "2px solid lime";
+      if (!subject || subject.length === 0) {
+        showError("Please enter a subject.");
+        return false;
+      }
 
-                }
+      if (subject.length > 200) {
+        showError("Subject must be less than 200 characters.");
+        return false;
+      }
 
-            });
+      if (!message || message.length === 0) {
+        showError("Please enter your message.");
+        return false;
+      }
 
-            if (!valid) {
-                formStatus.textContent = "Please fill all fields.";
-                return;
-            }
+      if (message.length > 5000) {
+        showError("Message must be less than 5000 characters.");
+        return false;
+      }
 
-            const payload = {
-                name: nameInput.value.trim(),
-                email: emailInput.value.trim(),
-                message: messageInput.value.trim()
-            };
+      return true;
+    }
 
-            formStatus.textContent = "Saving your message...";
+    if (form && nameInput && emailInput && subjectInput && messageInput && submitBtn) {
 
-            try {
-                const response = await fetch(`${apiBase}/api/messages`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
 
-                let data = {};
-                try {
-                    data = await response.json();
-                } catch (jsonError) {
-                    data = {};
-                }
+        // Prevent duplicate submissions
+        if (isSubmitting) {
+          return;
+        }
 
-                if (!response.ok) {
-                    throw new Error(data.error || "Unable to save message");
-                }
+        // Validate form
+        if (!validateForm()) {
+          return;
+        }
 
-                formStatus.textContent = "Message sent successfully!";
-                form.reset();
-                inputs.forEach(input => input.style.border = "none");
+        isSubmitting = true;
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = "0.6";
+        submitBtn.style.cursor = "not-allowed";
+        clearStatus();
 
-            } catch (error) {
-                formStatus.textContent = "";
-            }
+        const payload = {
+          name: nameInput.value.trim(),
+          email: emailInput.value.trim(),
+          subject: subjectInput.value.trim(),
+          message: messageInput.value.trim(),
+          honeypot: document.querySelector('.honeypot')?.value || ""
+        };
 
-        });
+        try {
+          showStatus("Sending your message...", "#38bdf8");
+          
+          const response = await fetch(`${apiBase}/api/messages`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            timeout: 10000
+          });
 
+          let data = {};
+          try {
+            data = await response.json();
+          } catch (jsonError) {
+            data = { error: "Invalid response from server" };
+          }
+
+          if (!response.ok) {
+            const errorMessage = data.error || "Failed to send message. Please try again.";
+            showError(errorMessage);
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.style.cursor = "pointer";
+            return;
+          }
+
+          showSuccess("✓ Message sent successfully! I'll get back to you soon.");
+          
+          // Clear form after success
+          form.reset();
+          
+          // Re-enable button after delay
+          setTimeout(() => {
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.style.cursor = "pointer";
+            clearStatus();
+          }, 3000);
+
+        } catch (error) {
+          console.error('Submission error:', error);
+          showError("Network error. Please check your connection and try again.");
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = "1";
+          submitBtn.style.cursor = "pointer";
+        }
+      });
+
+    }
+
+    function showStatus(message, color) {
+      formStatus.textContent = message;
+      formStatus.style.color = color;
+      formStatus.style.marginTop = "12px";
     }
 
     /* ===============================

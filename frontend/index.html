@@ -378,10 +378,12 @@
           <input type="text" id="name" name="name" placeholder="Your Name" required>
           <label for="email">Email</label>
           <input type="email" id="email" name="email" placeholder="Your Email" required>
+          <label for="subject">Subject</label>
+          <input type="text" id="subject" name="subject" placeholder="What is this about?" required>
           <label for="message">Message</label>
           <textarea id="message" name="message" placeholder="Your Message" required></textarea>
           <input class="honeypot" type="text" name="company" tabindex="-1" autocomplete="off">
-          <button class="btn" type="submit">Send Message</button>
+          <button class="btn" type="submit" id="submitBtn">Send Message</button>
           <p id="formStatus" class="form-status" aria-live="polite"></p>
         </form>
         <div class="contact-card reveal-right">

@@ -16,6 +16,21 @@ const databaseDir = path.join(__dirname, '..', 'database');
 const rootDbPath = path.join(__dirname, '..', 'messages.db');
 const dbPath = path.join(databaseDir, 'messages.db');
 
+// Submission tracking for rate limiting
+const submissionTracker = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_SUBMISSIONS_PER_WINDOW = 5;
+
+// Input validation constants
+const FIELD_LIMITS = {
+  name: 100,
+  email: 255,
+  subject: 200,
+  message: 5000
+};
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 fs.mkdirSync(databaseDir, { recursive: true });
 
 if (!fs.existsSync(dbPath) && fs.existsSync(rootDbPath)) {
@@ -24,6 +39,39 @@ if (!fs.existsSync(dbPath) && fs.existsSync(rootDbPath)) {
 
 app.use(cors());
 app.use(express.json());
+
+// Security: Sanitize input
+function sanitizeInput(str) {
+  if (typeof str !== 'string') return '';
+  return str.trim().replace(/[<>]/g, '');
+}
+
+// Validate email format
+function isValidEmail(email) {
+  return EMAIL_REGEX.test(email) && email.length <= FIELD_LIMITS.email;
+}
+
+// Check rate limit
+function checkRateLimit(ip) {
+  const now = Date.now();
+  if (!submissionTracker.has(ip)) {
+    submissionTracker.set(ip, []);
+  }
+  
+  const submissions = submissionTracker.get(ip);
+  const recentSubmissions = submissions.filter(time => now - time < RATE_LIMIT_WINDOW);
+  submissionTracker.set(ip, recentSubmissions);
+  
+  return recentSubmissions.length < MAX_SUBMISSIONS_PER_WINDOW;
+}
+
+// Record submission
+function recordSubmission(ip) {
+  if (!submissionTracker.has(ip)) {
+    submissionTracker.set(ip, []);
+  }
+  submissionTracker.get(ip).push(Date.now());
+}
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
@@ -46,16 +94,40 @@ const db = new sqlite3.Database(dbPath, (err) => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT NOT NULL,
+      subject TEXT,
       message TEXT NOT NULL,
+      status TEXT DEFAULT 'new',
       reply TEXT,
       replied_at DATETIME,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `, (createErr) => {
     if (createErr) {
       console.error('Table setup failed:', createErr.message);
       return;
     }
+
+    // Add subject column if it doesn't exist
+    db.run('ALTER TABLE messages ADD COLUMN subject TEXT', (subjectErr) => {
+      if (subjectErr && !/duplicate column name/i.test(subjectErr.message)) {
+        console.error('Subject column setup failed:', subjectErr.message);
+      }
+    });
+
+    // Add status column if it doesn't exist
+    db.run("ALTER TABLE messages ADD COLUMN status TEXT DEFAULT 'new'", (statusErr) => {
+      if (statusErr && !/duplicate column name/i.test(statusErr.message)) {
+        console.error('Status column setup failed:', statusErr.message);
+      }
+    });
+
+    // Add updated_at column if it doesn't exist (without default)
+    db.run('ALTER TABLE messages ADD COLUMN updated_at DATETIME', (updatedErr) => {
+      if (updatedErr && !/duplicate column name/i.test(updatedErr.message)) {
+        console.error('Updated_at column setup failed:', updatedErr.message);
+      }
+    });
 
     db.run('ALTER TABLE messages ADD COLUMN reply TEXT', (replyErr) => {
       if (replyErr && !/duplicate column name/i.test(replyErr.message)) {
@@ -88,7 +160,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
             console.error('Location seed row failed:', seedErr.message);
           }
         });
-        console.log('Local database ready');
+        console.log('Local database ready with enhanced schema');
       }
     });
   });
@@ -142,10 +214,10 @@ function getMessagesFromLocalDb() {
   });
 }
 
-function saveMessageToLocalDb(name, email, message) {
+function saveMessageToLocalDb(name, email, subject, message) {
   return new Promise((resolve, reject) => {
-    const stmt = db.prepare('INSERT INTO messages (name, email, message, reply, replied_at) VALUES (?, ?, ?, NULL, NULL)');
-    stmt.run(name, email, message, function (err) {
+    const stmt = db.prepare('INSERT INTO messages (name, email, subject, message, status, reply, replied_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)');
+    stmt.run(name, email, subject, message, 'new', function (err) {
       stmt.finalize();
       if (err) {
         reject(new Error('Failed to save message'));
@@ -156,9 +228,27 @@ function saveMessageToLocalDb(name, email, message) {
   });
 }
 
+function updateMessageStatusInLocalDb(id, status) {
+  return new Promise((resolve, reject) => {
+    db.run('UPDATE messages SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, id], function (err) {
+      if (err) {
+        reject(new Error('Failed to update message status'));
+        return;
+      }
+
+      if (this.changes === 0) {
+        resolve({ success: false, notFound: true });
+        return;
+      }
+
+      resolve({ success: true });
+    });
+  });
+}
+
 function saveReplyToLocalDb(id, reply) {
   return new Promise((resolve, reject) => {
-    db.run('UPDATE messages SET reply = ?, replied_at = CURRENT_TIMESTAMP WHERE id = ?', [reply, id], function (err) {
+    db.run('UPDATE messages SET reply = ?, replied_at = CURRENT_TIMESTAMP, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [reply, 'replied', id], function (err) {
       if (err) {
         reject(new Error('Failed to save reply'));
         return;
@@ -285,30 +375,123 @@ app.delete('/api/messages/:id', checkAdminAuth, async (req, res) => {
   }
 });
 
-app.post('/api/messages', async (req, res) => {
-  const { name, email, message } = req.body;
+// Update message status (read, replied, archived)
+app.patch('/api/messages/:id/status', checkAdminAuth, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
 
-  if (!name || !email || !message) {
-    res.status(400).json({ error: 'All fields are required' });
+  const validStatuses = ['new', 'read', 'replied', 'archived'];
+  
+  if (!status || !validStatuses.includes(status)) {
+    res.status(400).json({ error: `Status must be one of: ${validStatuses.join(', ')}` });
     return;
   }
 
   try {
     if (USE_SUPABASE) {
-      const insertedRows = await supabaseRequest('/rest/v1/messages', {
-        method: 'POST',
-        body: JSON.stringify([{ name, email, message }]),
-        headers: { Prefer: 'return=representation' }
+      await supabaseRequest(`/rest/v1/messages?id=eq.${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, updated_at: new Date().toISOString() })
       });
-
-      res.status(201).json({ success: true, id: insertedRows?.[0]?.id || null });
+      res.json({ success: true });
       return;
     }
 
-    const result = await saveMessageToLocalDb(name, email, message);
-    res.status(201).json(result);
+    const result = await updateMessageStatusInLocalDb(id, status);
+    if (result.notFound) {
+      res.status(404).json({ error: 'Message not found' });
+      return;
+    }
+
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/messages', async (req, res) => {
+  try {
+    const { name, email, subject, message, honeypot } = req.body;
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+
+    // Honeypot check: if honeypot field is filled, reject silently
+    if (honeypot && honeypot.trim() !== '') {
+      res.status(201).json({ success: true, id: null });
+      return;
+    }
+
+    // Rate limiting
+    if (!checkRateLimit(clientIp)) {
+      res.status(429).json({ error: 'Too many submissions. Please try again later.' });
+      return;
+    }
+
+    // Validate all fields present
+    if (!name || !email || !subject || !message) {
+      res.status(400).json({ error: 'All fields (name, email, subject, message) are required' });
+      return;
+    }
+
+    // Sanitize inputs
+    const sanitizedName = sanitizeInput(name);
+    const sanitizedEmail = sanitizeInput(email);
+    const sanitizedSubject = sanitizeInput(subject);
+    const sanitizedMessage = sanitizeInput(message);
+
+    // Validate field lengths
+    if (sanitizedName.length === 0 || sanitizedName.length > FIELD_LIMITS.name) {
+      res.status(400).json({ error: `Name must be between 1 and ${FIELD_LIMITS.name} characters` });
+      return;
+    }
+
+    if (sanitizedSubject.length === 0 || sanitizedSubject.length > FIELD_LIMITS.subject) {
+      res.status(400).json({ error: `Subject must be between 1 and ${FIELD_LIMITS.subject} characters` });
+      return;
+    }
+
+    if (sanitizedMessage.length === 0 || sanitizedMessage.length > FIELD_LIMITS.message) {
+      res.status(400).json({ error: `Message must be between 1 and ${FIELD_LIMITS.message} characters` });
+      return;
+    }
+
+    // Validate email format
+    if (!isValidEmail(sanitizedEmail)) {
+      res.status(400).json({ error: 'Please provide a valid email address' });
+      return;
+    }
+
+    // Record submission for rate limiting
+    recordSubmission(clientIp);
+
+    try {
+      if (USE_SUPABASE) {
+        const insertedRows = await supabaseRequest('/rest/v1/messages', {
+          method: 'POST',
+          body: JSON.stringify([{ 
+            name: sanitizedName, 
+            email: sanitizedEmail, 
+            subject: sanitizedSubject,
+            message: sanitizedMessage,
+            status: 'new',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }]),
+          headers: { Prefer: 'return=representation' }
+        });
+
+        res.status(201).json({ success: true, id: insertedRows?.[0]?.id || null });
+        return;
+      }
+
+      const result = await saveMessageToLocalDb(sanitizedName, sanitizedEmail, sanitizedSubject, sanitizedMessage);
+      res.status(201).json(result);
+    } catch (dbErr) {
+      console.error('Database error:', dbErr.message);
+      res.status(500).json({ error: 'Failed to save your message. Please try again later.' });
+    }
+  } catch (error) {
+    console.error('Submission error:', error.message);
+    res.status(500).json({ error: 'An error occurred while processing your request' });
   }
 });
 
